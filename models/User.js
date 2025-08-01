@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   phone: { type: String },
   address: { type: String },
+  location: { type: String },
   is_admin: { type: Boolean, default: false },
   wallet_balance: { type: Number, default: 0.00 },
   locked_amount: { type: Number, default: 0.00 },

@@ -113,7 +113,7 @@ class WalletService {
   }
 
   // Place bid using wallet balance
-  async placeBid(userId, auctionId, bidAmount) {
+  async placeBid(userId, auctionId, bidAmount, req = null) {
     try {
       // Get user wallet
       const wallet = await this.getUserWallet(userId);
@@ -148,12 +148,31 @@ class WalletService {
       const newLocked = currentLocked + bidAmount;
       user.locked_amount = newLocked;
       await user.save();
+      
+      // Get location from IP if request object is provided
+      let location = '';
+      if (req) {
+        try {
+          const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+          const geoRes = await fetch(`https://ipapi.co/${ip}/json/`);
+          const geoData = await geoRes.json();
+          if (geoData && geoData.city && geoData.region) {
+            location = `${geoData.city}, ${geoData.region}`;
+          } else if (geoData && geoData.city) {
+            location = geoData.city;
+          }
+        } catch (e) { 
+          location = ''; 
+        }
+      }
+      
       // Create bid record
       const bid = await Bid.create({
         auction: auction._id,
         bidder: userId,
         amount: bidAmount,
         status: 'success', // Ensure wallet bids are visible in frontend
+        location: location,
       });
       // Record wallet transaction
       await WalletTransaction.create({

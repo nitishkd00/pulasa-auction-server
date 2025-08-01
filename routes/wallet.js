@@ -110,7 +110,7 @@ router.post('/bid', authenticateToken, [
     }
 
     const { auction_id, amount } = req.body;
-    const result = await walletService.placeBid(req.user._id, auction_id, amount);
+    const result = await walletService.placeBid(req.user._id, auction_id, amount, req);
 
     // Emit real-time update via Socket.IO
     const io = req.app.get('io');

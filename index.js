@@ -59,7 +59,9 @@ app.use(cors({
       process.env.CLIENT_URL || "http://localhost:3000",
       "http://localhost:3001",
       "http://localhost:8080",
-      "http://localhost:8888"
+      "http://localhost:8888",
+      "https://pulasa-main.vercel.app",
+      "https://pulasa-auction-client.vercel.app"
     ];
     if (allowedOrigins.includes(origin)) {
       console.log('✅ AUCTION CORS: Allowing configured origin');

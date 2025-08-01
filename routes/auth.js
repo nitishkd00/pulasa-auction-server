@@ -213,7 +213,7 @@ router.post('/validate', async (req, res) => {
     // First try to validate with unified auth service
     try {
       const axios = require('axios');
-      const unifiedAuthUrl = process.env.UNIFIED_AUTH_URL || 'http://localhost:6001';
+      const unifiedAuthUrl = 'https://pulasa-auth-service.onrender.com';
       const validation = await axios.post(`${unifiedAuthUrl}/api/auth/validate`, {
         token: token
       }, {

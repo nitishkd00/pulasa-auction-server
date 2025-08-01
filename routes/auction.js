@@ -152,11 +152,11 @@ router.get('/:id', optionalAuth, async (req, res) => {
     }
     auction.winner_name = winner_name;
     auction.winner_location = winner_location;
-    // Get recent bids for this auction (last 5)
+    // Get recent bids for this auction (ALL bids from ALL users - last 10)
     const recentBids = await Bid.find({ auction: id, status: 'success' })
       .populate('bidder', 'username')
       .sort({ created_at: -1 })
-      .limit(5)
+      .limit(10)
       .lean();
     // Map recent bids to include bidder name and location
     const mappedRecentBids = recentBids.map(bid => ({
@@ -166,18 +166,27 @@ router.get('/:id', optionalAuth, async (req, res) => {
       created_at: bid.created_at,
       location: bid.location || '',
     }));
-    // Get full bid history for this auction
-    const bidHistory = await Bid.find({ auction: id, status: 'success' })
-      .populate('bidder', 'username')
-      .sort({ created_at: -1 })
-      .lean();
-    const mappedBidHistory = bidHistory.map(bid => ({
-      amount: bid.amount,
-      username: bid.bidder && bid.bidder.username ? bid.bidder.username : (bid.bidder ? `User ${bid.bidder._id}` : 'Unknown'),
-      bidder_id: bid.bidder && bid.bidder._id ? bid.bidder._id : (bid.bidder ? bid.bidder : 'Unknown'),
-      created_at: bid.created_at,
-      location: bid.location || '',
-    }));
+    
+    // Get bid history for CURRENT USER ONLY (if logged in)
+    let mappedBidHistory = [];
+    if (req.user) {
+      const bidHistory = await Bid.find({ 
+        auction: id, 
+        bidder: req.user.userId, 
+        status: 'success' 
+      })
+        .populate('bidder', 'username')
+        .sort({ created_at: -1 })
+        .lean();
+      
+      mappedBidHistory = bidHistory.map(bid => ({
+        amount: bid.amount,
+        username: bid.bidder && bid.bidder.username ? bid.bidder.username : (bid.bidder ? `User ${bid.bidder._id}` : 'Unknown'),
+        bidder_id: bid.bidder && bid.bidder._id ? bid.bidder._id : (bid.bidder ? bid.bidder : 'Unknown'),
+        created_at: bid.created_at,
+        location: bid.location || '',
+      }));
+    }
     // Get user's highest bid if logged in
     let userHighestBid = null;
     if (req.user) {
