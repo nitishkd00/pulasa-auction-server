@@ -19,7 +19,10 @@ const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: [
-      process.env.CLIENT_URL || "http://localhost:3000",
+      "https://auction.pulasa.com",
+      "https://www.pulasa.com", 
+      "https://pulasa.com",
+      "http://localhost:3000",
       "http://localhost:3001",
       "http://localhost:8080"
     ],
@@ -54,15 +57,16 @@ app.use(cors({
       return callback(null, true);
     }
 
-    // Allow specific origins
+    // Allow specific origins - simplified list
     const allowedOrigins = [
-      process.env.CLIENT_URL || "http://localhost:3000",
+      "https://auction.pulasa.com",
+      "https://www.pulasa.com", 
+      "https://pulasa.com",
+      "http://localhost:3000",
       "http://localhost:3001",
-      "http://localhost:8080",
-      "http://localhost:8888",
-      "https://pulasa-main.vercel.app",
-      "https://pulasa-auction-client.vercel.app"
+      "http://localhost:8080"
     ];
+    
     if (allowedOrigins.includes(origin)) {
       console.log('✅ AUCTION CORS: Allowing configured origin');
       return callback(null, true);

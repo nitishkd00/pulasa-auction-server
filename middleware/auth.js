@@ -18,7 +18,7 @@ const authenticateToken = async (req, res, next) => {
     }
 
     // Validate token with unified auth service
-    const unifiedAuthURL = 'https://pulasa-auth-service.onrender.com';
+    const unifiedAuthURL = 'https://api.pulasa.com';
     const validateResponse = await fetch(`${unifiedAuthURL}/api/auth/validate`, {
       method: 'POST',
       headers: {
@@ -74,7 +74,7 @@ const optionalAuth = async (req, res, next) => {
 
     if (token) {
       // Validate token with unified auth service
-      const unifiedAuthURL = 'https://pulasa-auth-service.onrender.com';
+      const unifiedAuthURL = 'https://api.pulasa.com';
       const validateResponse = await fetch(`${unifiedAuthURL}/api/auth/validate`, {
         method: 'POST',
         headers: {
