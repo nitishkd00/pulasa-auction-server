@@ -154,14 +154,14 @@ router.get('/:id', optionalAuth, async (req, res) => {
     auction.winner_location = winner_location;
     // Get recent bids for this auction (ALL bids from ALL users - last 10)
     const recentBids = await Bid.find({ auction: id, status: 'success' })
-      .populate('bidder', 'username')
+      .populate('bidder', 'username name email')
       .sort({ created_at: -1 })
       .limit(10)
       .lean();
     // Map recent bids to include bidder name and location
     const mappedRecentBids = recentBids.map(bid => ({
       amount: bid.amount,
-      username: bid.bidder && bid.bidder.username ? bid.bidder.username : (bid.bidder ? `User ${bid.bidder._id}` : 'Unknown'),
+      username: bid.bidder && (bid.bidder.username || bid.bidder.name) ? (bid.bidder.username || bid.bidder.name) : (bid.bidder ? `User ${bid.bidder._id}` : 'Unknown'),
       bidder_id: bid.bidder && bid.bidder._id ? bid.bidder._id : (bid.bidder ? bid.bidder : 'Unknown'),
       created_at: bid.created_at,
       location: bid.location || '',
@@ -175,13 +175,13 @@ router.get('/:id', optionalAuth, async (req, res) => {
         bidder: req.user.userId, 
         status: 'success' 
       })
-        .populate('bidder', 'username')
+        .populate('bidder', 'username name email')
         .sort({ created_at: -1 })
         .lean();
       
       mappedBidHistory = bidHistory.map(bid => ({
         amount: bid.amount,
-        username: bid.bidder && bid.bidder.username ? bid.bidder.username : (bid.bidder ? `User ${bid.bidder._id}` : 'Unknown'),
+        username: bid.bidder && (bid.bidder.username || bid.bidder.name) ? (bid.bidder.username || bid.bidder.name) : (bid.bidder ? `User ${bid.bidder._id}` : 'Unknown'),
         bidder_id: bid.bidder && bid.bidder._id ? bid.bidder._id : (bid.bidder ? bid.bidder : 'Unknown'),
         created_at: bid.created_at,
         location: bid.location || '',
