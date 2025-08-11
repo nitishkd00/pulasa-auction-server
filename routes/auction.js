@@ -26,14 +26,19 @@ router.post('/create', authenticateToken, requireAdmin, [
     const { item_name, item_image, base_price, start_time, end_time, description } = req.body;
 
     // Validate time constraints
-    const startDate = new Date(start_time);
-    const endDate = new Date(end_time);
+    // Parse times as local times to avoid timezone issues
+    const startDate = new Date(start_time + "T00:00:00");
+    const startTime = new Date(start_time);
+    const startDateTime = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), startTime.getHours(), startTime.getMinutes());
+    const endDate = new Date(end_time + "T00:00:00");
+    const endTime = new Date(end_time);
+    const endDateTime = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), endTime.getHours(), endTime.getMinutes());
     const now = new Date();
 
-    if (startDate <= now) {
+    if (startDateTime <= now) {
       return res.status(400).json({ error: 'Start time must be in the future' });
     }
-    if (endDate <= startDate) {
+    if (endDateTime <= startDateTime) {
       return res.status(400).json({ error: 'End time must be after start time' });
     }
 
@@ -43,8 +48,8 @@ router.post('/create', authenticateToken, requireAdmin, [
       item_image,
       base_price,
       description,
-      start_time: startDate,
-      end_time: endDate,
+      start_time: startDateTime,
+      end_time: endDateTime,
       created_by: req.user.userId
     });
 
