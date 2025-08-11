@@ -31,7 +31,6 @@ async function createAdminUser() {
       phone: '9999999999',
       address: 'Admin Address',
       is_admin: true,
-      wallet_balance: 100000, // ₹1,00,000 for testing
       locked_amount: 0
     });
 
@@ -41,7 +40,6 @@ async function createAdminUser() {
     console.log('🔑 Password: admin123');
     console.log('👤 Name: Auction Admin');
     console.log('👑 Is Admin: true');
-    console.log('💰 Wallet Balance: ₹1,00,000');
 
   } catch (error) {
     console.error('❌ Error creating admin user:', error);

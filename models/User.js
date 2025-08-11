@@ -9,7 +9,6 @@ const userSchema = new mongoose.Schema({
   address: { type: String },
   location: { type: String },
   is_admin: { type: Boolean, default: false },
-  wallet_balance: { type: Number, default: 0.00 },
   locked_amount: { type: Number, default: 0.00 },
 }, {
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }

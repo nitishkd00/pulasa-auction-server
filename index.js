@@ -12,12 +12,14 @@ const cron = require('node-cron');
 const Auction = require('./models/Auction');
 const Bid = require('./models/Bid');
 const AuctionEvent = require('./models/AuctionEvent');
+const auctionEndService = require('./services/auctionEndService');
 
 const app = express();
 app.set('trust proxy', 1); // Trust the first proxy (React dev server)
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
+
     origin: [
       "https://auction.pulasa.com",
       "https://www.pulasa.com", 
@@ -160,15 +162,19 @@ async function startServer() {
     const authRoutes = require('./routes/auth');
     const auctionRoutes = require('./routes/auction');
     const bidRoutes = require('./routes/bid');
-    const walletRoutes = require('./routes/wallet');
     const adminRoutes = require('./routes/admin');
+    const adminAuctionRoutes = require('./routes/admin-auctions');
+    const notificationRoutes = require('./routes/notifications');
+    const webhookRoutes = require("./routes/webhooks");
 
     // Routes
     app.use('/api/auth', authRoutes);
     app.use('/api/auction', auctionRoutes);
     app.use('/api/bid', bidRoutes);
-    app.use('/api/wallet', walletRoutes);
     app.use('/api/admin', adminRoutes);
+    app.use('/api/admin/auctions', adminAuctionRoutes);
+    app.use('/api/notifications', notificationRoutes);
+    app.use('/api/webhooks', webhookRoutes);
 
     // Health check endpoint
     app.get('/api/health', (req, res) => {
@@ -181,7 +187,7 @@ async function startServer() {
         mode: 'centralized',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        features: ['wallet', 'auctions', 'real-time-bidding']
+        features: ['auctions', 'real-time-bidding']
       });
     });
 
@@ -247,10 +253,12 @@ async function startServer() {
     const PORT = process.env.PORT || 5001;
 
     server.listen(PORT, () => {
+      // Start auction end processing cron job
+      auctionEndService.startCronJob();
       console.log(`🚀 Pulasa Auction Server running on port ${PORT}`);
       console.log(`📡 Socket.IO server initialized`);
       console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🏛️  Mode: Centralized Auction System with Internal Wallet (MongoDB)`);
+      console.log(`🏛️  Mode: Centralized Auction System with Razorpay Authorize-Capture (MongoDB)`);
     });
   } catch (err) {
     console.error('Failed to connect to MongoDB or start server:', err);

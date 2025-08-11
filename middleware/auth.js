@@ -52,7 +52,7 @@ const authenticateToken = async (req, res, next) => {
       email: user.email,
       name: user.name,
       is_admin: user.is_admin,
-      wallet_balance: user.wallet_balance,
+      
       locked_amount: user.locked_amount
     };
 
@@ -96,7 +96,7 @@ const optionalAuth = async (req, res, next) => {
             email: user.email,
             name: user.name,
             is_admin: user.is_admin,
-            wallet_balance: user.wallet_balance,
+            
             locked_amount: user.locked_amount
           };
         }
@@ -166,7 +166,7 @@ const validateUnifiedUser = async (req, res, next) => {
       email: user.email,
       name: user.name,
       is_admin: user.is_admin,
-      wallet_balance: user.wallet_balance,
+      
       locked_amount: user.locked_amount
     };
 

@@ -69,7 +69,6 @@ router.post('/register', [
         email: newUser.email,
         name: newUser.username,
         is_admin: newUser.is_admin,
-        wallet_balance: 0,
         locked_amount: 0,
         created_at: newUser.created_at,
         updated_at: newUser.updated_at
@@ -131,7 +130,6 @@ router.post('/login', [
         email: user.email,
         name: user.username,
         is_admin: user.is_admin,
-        wallet_balance: user.wallet_balance || 0,
         locked_amount: user.locked_amount || 0,
         created_at: user.created_at,
         updated_at: user.updated_at
@@ -259,7 +257,6 @@ router.post('/validate', async (req, res) => {
         email: user.email,
         name: user.username,
         is_admin: user.is_admin,
-        wallet_balance: user.wallet_balance || 0,
         locked_amount: user.locked_amount || 0,
         created_at: user.created_at,
         updated_at: user.updated_at

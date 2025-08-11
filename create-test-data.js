@@ -19,7 +19,6 @@ async function createTestData() {
         phone: '9876543210',
         address: '123 Main St, City, State',
         is_admin: false,
-        wallet_balance: 50000,
         locked_amount: 0
       },
       {
@@ -29,7 +28,6 @@ async function createTestData() {
         phone: '9876543211',
         address: '456 Oak Ave, City, State',
         is_admin: false,
-        wallet_balance: 75000,
         locked_amount: 0
       },
       {
@@ -39,7 +37,6 @@ async function createTestData() {
         phone: '9876543212',
         address: '789 Pine Rd, City, State',
         is_admin: false,
-        wallet_balance: 30000,
         locked_amount: 0
       },
       {
@@ -49,7 +46,6 @@ async function createTestData() {
         phone: '9876543213',
         address: '321 Elm St, City, State',
         is_admin: false,
-        wallet_balance: 60000,
         locked_amount: 0
       },
       {
@@ -59,7 +55,6 @@ async function createTestData() {
         phone: '9876543214',
         address: '654 Maple Dr, City, State',
         is_admin: false,
-        wallet_balance: 45000,
         locked_amount: 0
       }
     ];
@@ -77,7 +72,6 @@ async function createTestData() {
           phone: userData.phone,
           address: userData.address,
           is_admin: userData.is_admin,
-          wallet_balance: userData.wallet_balance,
           locked_amount: userData.locked_amount
         });
         await user.save();
