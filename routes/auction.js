@@ -65,7 +65,13 @@ router.post('/create', authenticateToken, requireAdmin, [
     });
   } catch (error) {
     console.error('Create auction error:', error);
-    res.status(500).json({ error: 'Failed to create auction' });
+    console.error('Validation errors:', errors.array());
+    console.error('Full error details:', error);
+    res.status(500).json({ 
+      error: 'Failed to create auction', 
+      details: error.message,
+      validationErrors: errors ? errors.array() : null
+    });
   }
 });
 
