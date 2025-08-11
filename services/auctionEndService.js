@@ -3,7 +3,6 @@ const paymentService = require('./paymentService');
 const Auction = require('../models/Auction');
 const Bid = require('../models/Bid');
 const AuctionEvent = require('../models/AuctionEvent');
-const User = require('../models/User');
 
 class AuctionEndService {
   constructor() {
@@ -112,20 +111,6 @@ class AuctionEndService {
               payment_id: highestBid.razorpay_payment_id
             }
           });
-          
-          // Send winner notification
-          try {
-            const winner = await User.findById(highestBid.bidder);
-            if (winner           });          }); winner.email) {
-                winner.email,
-                winner.name || winner.username,
-                auction.item_name,
-                highestBid.amount
-              );
-            }
-          } catch (notificationError) {
-            console.error("❌ Failed to send winner notification:", notificationError);
-          }
 
           console.log(`🏆 Auction ${auction._id} ended - Winner: ${highestBid.bidder}, Amount: ₹${highestBid.amount}`);
         } else {
@@ -187,20 +172,6 @@ class AuctionEndService {
               amount: bid.amount
             }
           });
-          
-          // Send winner notification
-          try {
-            const winner = await User.findById(highestBid.bidder);
-            if (winner           });          }); winner.email) {
-                winner.email,
-                winner.name || winner.username,
-                auction.item_name,
-                highestBid.amount
-              );
-            }
-          } catch (notificationError) {
-            console.error("❌ Failed to send winner notification:", notificationError);
-          }
         }
       }
 
