@@ -229,12 +229,22 @@ async function startServer() {
 
     setupAuctionEndingJob(io, userSockets);
 
-    if (process.env.NODE_ENV === 'production') {
-      app.use(express.static(path.join(__dirname, '../client/build')));
-      app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+    // Backend-only service - no frontend files to serve
+    app.get('/', (req, res) => {
+      res.json({
+        success: true,
+        service: 'pulasa-auction-server',
+        message: 'Pulasa Auction Server API is running',
+        version: '1.0.0',
+        endpoints: [
+          '/api/health',
+          '/api/auction',
+          '/api/bid',
+          '/api/admin',
+          '/api/webhooks'
+        ]
       });
-    }
+    });
 
     // Error handling middleware
     app.use((err, req, res, next) => {
