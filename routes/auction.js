@@ -9,6 +9,27 @@ const mongoose = require('mongoose');
 
 const router = express.Router();
 
+// Helper function to fix timezone issues
+const fixTimezone = (dateString) => {
+  // If the date string contains a time (not just date), handle timezone
+  if (dateString.includes('T') && dateString.includes(':')) {
+    // Parse as local time and create a proper date object
+    const date = new Date(dateString);
+    
+    // Check if this looks like a timezone-shifted time
+    // If hours are 18+ (6 PM or later), it might be shifted
+    if (date.getHours() >= 18) {
+      // Get local timezone offset
+      const localOffset = new Date().getTimezoneOffset() * 60000;
+      // Adjust the time back to local time
+      return new Date(date.getTime() + localOffset);
+    }
+  }
+  
+  // Return original date if no adjustment needed
+  return new Date(dateString);
+};
+
 // Create new auction (Admin only)
 router.post('/create', authenticateToken, requireAdmin, [
   body('item_name').notEmpty().withMessage('Item name is required'),
@@ -25,10 +46,16 @@ router.post('/create', authenticateToken, requireAdmin, [
 
     const { item_name, item_image, base_price, start_time, end_time, description } = req.body;
 
-    // Parse times and handle timezone properly
-    const startDateTime = new Date(start_time);
-    const endDateTime = new Date(end_time);
+    console.log('Received start_time:', start_time);
+    console.log('Received end_time:', end_time);
+
+    // Fix timezone issues
+    const startDateTime = fixTimezone(start_time);
+    const endDateTime = fixTimezone(end_time);
     const now = new Date();
+
+    console.log('Parsed startDateTime:', startDateTime);
+    console.log('Parsed endDateTime:', endDateTime);
 
     // Validate that dates are valid
     if (isNaN(startDateTime.getTime())) {
@@ -69,7 +96,11 @@ router.post('/create', authenticateToken, requireAdmin, [
 
     res.status(201).json({
       message: 'Auction created successfully',
-      auction
+      auction: {
+        ...auction.toObject(),
+        start_time: startDateTime.toISOString(),
+        end_time: endDateTime.toISOString()
+      }
     });
   } catch (error) {
     console.error('Create auction error:', error);
@@ -153,7 +184,7 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     if (description) updateData.description = description;
     
     if (start_time) {
-      const startDateTime = new Date(start_time);
+      const startDateTime = fixTimezone(start_time);
       if (isNaN(startDateTime.getTime())) {
         return res.status(400).json({ error: 'Invalid start time format' });
       }
@@ -161,7 +192,7 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     }
     
     if (end_time) {
-      const endDateTime = new Date(end_time);
+      const endDateTime = fixTimezone(end_time);
       if (isNaN(endDateTime.getTime())) {
         return res.status(400).json({ error: 'Invalid end time format' });
       }
