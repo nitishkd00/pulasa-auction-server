@@ -46,9 +46,11 @@ class PaymentService {
       
       return {
         success: true,
-        order_id: order.id,
-        amount: order.amount,
-        currency: order.currency
+        razorpay_order: {
+          id: order.id,
+          amount: order.amount,
+          currency: order.currency
+        }
       };
     } catch (error) {
       console.error('❌ Razorpay order creation failed:', error);
