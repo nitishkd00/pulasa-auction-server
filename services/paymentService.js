@@ -3,19 +3,42 @@ const crypto = require('crypto');
 
 class PaymentService {
   constructor() {
-    this.razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET
-    });
+    // Check if Razorpay credentials are available
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      console.warn('⚠️ Razorpay credentials not configured. Payment features will be disabled.');
+      this.razorpay = null;
+      this.isEnabled = false;
+      return;
+    }
+
+    try {
+      this.razorpay = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET
+      });
+      this.isEnabled = true;
+      console.log('✅ Razorpay initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize Razorpay:', error);
+      this.razorpay = null;
+      this.isEnabled = false;
+    }
   }
 
+  // Create Razorpay order for bid authorization (capture = 0)
   async createBidOrder(amount, currency = 'INR') {
     try {
+      if (!this.isEnabled || !this.razorpay) {
+        throw new Error('Razorpay is not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables.');
+      }
+
       const options = {
-        amount: Math.round(amount * 100),
+        amount: Math.round(amount * 100), // Convert to paise
         currency: currency,
-        payment_capture: 0,
-        notes: { purpose: 'bid_authorization' }
+        payment_capture: 0, // 0 means authorize only, 1 means capture immediately
+        notes: {
+          purpose: 'bid_authorization'
+        }
       };
 
       const order = await this.razorpay.orders.create(options);
@@ -33,8 +56,13 @@ class PaymentService {
     }
   }
 
+  // Verify payment authorization
   async verifyPaymentAuthorization(paymentId, orderId, signature) {
     try {
+      if (!this.isEnabled || !this.razorpay) {
+        throw new Error('Razorpay is not configured');
+      }
+
       const text = orderId + '|' + paymentId;
       const generatedSignature = crypto
         .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
@@ -54,10 +82,15 @@ class PaymentService {
     }
   }
 
+  // Capture authorized payment
   async capturePayment(paymentId, amount, currency = 'INR') {
     try {
+      if (!this.isEnabled || !this.razorpay) {
+        throw new Error('Razorpay is not configured');
+      }
+
       const captureData = {
-        amount: Math.round(amount * 100),
+        amount: Math.round(amount * 100), // Convert to paise
         currency: currency
       };
 
@@ -76,10 +109,15 @@ class PaymentService {
     }
   }
 
+  // Refund payment (for outbid users)
   async refundPayment(paymentId, amount, reason = 'Outbid by another user') {
     try {
+      if (!this.isEnabled || !this.razorpay) {
+        throw new Error('Razorpay is not configured');
+      }
+
       const refundData = {
-        amount: Math.round(amount * 100),
+        amount: Math.round(amount * 100), // Convert to paise
         currency: 'INR'
       };
 
@@ -98,22 +136,36 @@ class PaymentService {
     }
   }
 
+  // Get payment details
   async getPaymentDetails(paymentId) {
     try {
+      if (!this.isEnabled || !this.razorpay) {
+        throw new Error('Razorpay is not configured');
+      }
+
       const payment = await this.razorpay.payments.fetch(paymentId);
-      return { success: true, payment: payment };
+      return {
+        success: true,
+        payment: payment
+      };
     } catch (error) {
       console.error('❌ Failed to fetch payment details:', error);
       throw new Error(`Failed to fetch payment details: ${error.message}`);
     }
   }
 
+  // Verify webhook signature
   verifyWebhookSignature(payload, signature) {
     try {
+      if (!this.isEnabled) {
+        return false;
+      }
+
       const expectedSignature = crypto
         .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
         .update(payload)
         .digest('hex');
+
       return expectedSignature === signature;
     } catch (error) {
       console.error('❌ Webhook signature verification failed:', error);
