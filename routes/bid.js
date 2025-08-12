@@ -31,7 +31,7 @@ router.post('/place', authenticateToken, [
     }
 
     const { auction_id, amount, location } = req.body;
-    const userId = req.user.userId;
+    const userId = req.user.id;
     
     console.log('🚀 Bid placement request:', { auction_id, amount, location, userId });
     
@@ -184,7 +184,7 @@ router.post('/verify', authenticateToken, [
     }
 
     const { payment_id, order_id, signature } = req.body;
-    const userId = req.user.userId;
+    const userId = req.user.id;
 
     // Verify payment signature
     const verificationResult = await paymentService.verifyPaymentAuthorization(
@@ -240,7 +240,7 @@ router.post('/verify', authenticateToken, [
 // Get user's bids
 router.get('/my-bids', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
     
     const bids = await Bid.find({ bidder: userId })
       .populate('auction', 'item_name item_image base_price status')
