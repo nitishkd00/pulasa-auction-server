@@ -113,7 +113,7 @@ router.post('/place', authenticateToken, [
       bidder: userId,
       amount: amount,
       location: location || '',
-      razorpay_order_id: orderResult.order_id,
+      razorpay_order_id: orderResult.razorpay_order.id,
       authorized_amount: amount,
       payment_status: 'authorized',
       status: 'active'
@@ -133,7 +133,7 @@ router.post('/place', authenticateToken, [
       user: userId,
       details: {
         amount: amount,
-        order_id: orderResult.order_id
+        order_id: orderResult.razorpay_order.id
       }
     });
 
@@ -145,12 +145,12 @@ router.post('/place', authenticateToken, [
       bid: {
         id: newBid._id,
         amount: newBid.amount,
-        order_id: orderResult.order_id
+        order_id: orderResult.razorpay_order.id
       },
       razorpay_order: {
-        id: orderResult.order_id,
-        amount: orderResult.amount,
-        currency: orderResult.currency
+        id: orderResult.razorpay_order.id,
+        amount: orderResult.razorpay_order.amount,
+        currency: orderResult.razorpay_order.currency
       }
     });
 
