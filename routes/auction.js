@@ -1,6 +1,6 @@
 const express = require('express');
-const { body, validationResult } = require('express-validator');
-const { authenticateToken, requireAdmin, optionalAuth } = require('../middleware/auth');
+const { body, param, validationResult } = require('express-validator');
+const { authenticateToken, optionalAuth, requireAdmin } = require('../middleware/auth');
 const Auction = require('../models/Auction');
 const User = require('../models/User');
 const Bid = require('../models/Bid');
@@ -154,8 +154,23 @@ router.get('/', optionalAuth, async (req, res) => {
 });
 
 // Get single auction by ID
-router.get('/:id', optionalAuth, async (req, res) => {
+router.get('/:id', [
+  param('id').custom((value) => {
+    if (!mongoose.Types.ObjectId.isValid(value)) {
+      throw new Error('Invalid auction ID format');
+    }
+    return true;
+  })
+], optionalAuth, async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        error: 'Invalid auction ID format',
+        details: errors.array()
+      });
+    }
+
     const auction = await Auction.findById(req.params.id)
       .populate('created_by', 'username')
       .populate('highest_bidder', 'username')
@@ -173,8 +188,23 @@ router.get('/:id', optionalAuth, async (req, res) => {
 });
 
 // Update auction (Admin only)
-router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
+router.put('/:id', [
+  param('id').custom((value) => {
+    if (!mongoose.Types.ObjectId.isValid(value)) {
+      throw new Error('Invalid auction ID format');
+    }
+    return true;
+  })
+], authenticateToken, requireAdmin, async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        error: 'Invalid auction ID format',
+        details: errors.array()
+      });
+    }
+
     const { item_name, item_image, base_price, start_time, end_time, description } = req.body;
     
     const updateData = {};
@@ -217,8 +247,23 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Delete auction (Admin only)
-router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
+router.delete('/:id', [
+  param('id').custom((value) => {
+    if (!mongoose.Types.ObjectId.isValid(value)) {
+      throw new Error('Invalid auction ID format');
+    }
+    return true;
+  })
+], authenticateToken, requireAdmin, async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        error: 'Invalid auction ID format',
+        details: errors.array()
+      });
+    }
+
     const auction = await Auction.findByIdAndDelete(req.params.id);
     
     if (!auction) {

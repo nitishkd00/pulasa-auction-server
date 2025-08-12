@@ -1,5 +1,5 @@
 const express = require('express');
-const { body, validationResult } = require('express-validator');
+const { body, validationResult, param } = require('express-validator');
 const { authenticateToken, optionalAuth, requireAdmin } = require('../middleware/auth');
 const paymentService = require('../services/paymentService');
 const Auction = require('../models/Auction');
@@ -12,19 +12,29 @@ const router = express.Router();
 
 // Create bid order for authorization
 router.post('/place', authenticateToken, [
-  body('auction_id').isString().withMessage('Valid auction ID is required'),
+  body('auction_id').custom((value) => {
+    if (!mongoose.Types.ObjectId.isValid(value)) {
+      throw new Error('Invalid auction ID format');
+    }
+    return true;
+  }).withMessage('Valid auction ID is required'),
   body('amount').isFloat({ min: 0.01 }).withMessage('Valid bid amount is required'),
   body('location').optional().isString().withMessage('Location must be a string')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ 
+        error: 'Validation failed',
+        details: errors.array()
+      });
     }
 
     const { auction_id, amount, location } = req.body;
     const userId = req.user.userId;
-
+    
+    console.log('🚀 Bid placement request:', { auction_id, amount, location, userId });
+    
     // Validate auction exists and is active
     const auction = await Auction.findById(auction_id);
     if (!auction) {
@@ -246,11 +256,26 @@ router.get('/my-bids', authenticateToken, async (req, res) => {
 });
 
 // Admin: Get all bids for an auction
-router.get('/admin/auction/:auctionId', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/admin/auction/:auctionId', [
+  param('auctionId').custom((value) => {
+    if (!mongoose.Types.ObjectId.isValid(value)) {
+      throw new Error('Invalid auction ID format');
+    }
+    return true;
+  })
+], authenticateToken, requireAdmin, async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        error: 'Invalid auction ID format',
+        details: errors.array()
+      });
+    }
+
     const { auctionId } = req.params;
     
-    const bids = await Bid.find({ auctionId })
+    const bids = await Bid.find({ auction: auctionId })
       .populate('bidder', 'username name email')
       .sort({ created_at: -1 });
 

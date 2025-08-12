@@ -1,9 +1,11 @@
 const express = require('express');
+const { param, validationResult } = require('express-validator');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const Auction = require('../models/Auction');
 const Bid = require('../models/Bid');
 const AuctionEvent = require('../models/AuctionEvent');
 const User = require('../models/User');
+const mongoose = require('mongoose');
 
 const router = express.Router();
 
@@ -83,8 +85,23 @@ router.get('/dashboard', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Get detailed auction information with all bids
-router.get('/auction/:auctionId', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/auction/:auctionId', [
+  param('auctionId').custom((value) => {
+    if (!mongoose.Types.ObjectId.isValid(value)) {
+      throw new Error('Invalid auction ID format');
+    }
+    return true;
+  })
+], authenticateToken, requireAdmin, async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        error: 'Invalid auction ID format',
+        details: errors.array()
+      });
+    }
+
     const { auctionId } = req.params;
     
     const auction = await Auction.findById(auctionId)
