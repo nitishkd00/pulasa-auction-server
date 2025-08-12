@@ -48,7 +48,7 @@ class PaymentService {
         success: true,
         razorpay_order: {
           id: order.id,
-          amount: order.amount,
+          amount: order.amount / 100, // Convert paise back to rupees for frontend
           currency: order.currency
         }
       };
@@ -102,7 +102,7 @@ class PaymentService {
       return {
         success: true,
         payment_id: payment.id,
-        captured_amount: payment.amount,
+        captured_amount: payment.amount / 100, // Convert paise to rupees
         status: payment.status
       };
     } catch (error) {
@@ -129,7 +129,7 @@ class PaymentService {
       return {
         success: true,
         refund_id: payment.id,
-        refunded_amount: payment.amount,
+        refunded_amount: payment.amount / 100, // Convert paise to rupees
         status: payment.status
       };
     } catch (error) {
