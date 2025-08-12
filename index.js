@@ -98,9 +98,16 @@ app.use(express.urlencoded({ extended: true }));
 // Health check endpoint for Render
 app.get('/api/health', (req, res) => {
   res.status(200).json({ 
-    status: 'healthy', 
+    success: true,
+    status: 'OK',
+    service: 'auction-server',
+    message: 'Pulasa Auction Server is running',
+    version: '1.0.0',
+    mode: 'centralized',
     timestamp: new Date().toISOString(),
-    service: 'auction-server'
+    uptime: process.uptime(),
+    features: ['auctions', 'real-time-bidding'],
+    codeVersion: '9781d16' // Add this to verify code changes
   });
 });
 
@@ -278,3 +285,4 @@ async function startServer() {
 
 startServer();
 
+// Force deployment - Tue Aug 12 19:55:41 IST 2025
