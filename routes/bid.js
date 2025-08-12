@@ -145,7 +145,9 @@ router.post('/place', authenticateToken, [
     });
 
   } catch (error) {
-    console.error('❌ Bid placement error:', error);
+    console.error('❌ Bid placement error:');
+    console.error('❌ Error details:');
+    console.error('❌ Error details:');, error);
     res.status(500).json({ 
       error: 'Failed to place bid. Please try again.' 
     });
