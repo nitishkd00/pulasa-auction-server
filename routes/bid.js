@@ -76,6 +76,10 @@ router.post('/place', authenticateToken, [
 
     // Create Razorpay order for authorization
     console.log('🔑 Creating Razorpay order for amount:', amount);
+    console.log('🔑 User ID:', userId);
+    console.log('🔑 Auction ID:', auction_id);
+    console.log('🔑 Location:', location);
+    
     const orderResult = await paymentService.createBidOrder(amount);
     console.log('🔑 PaymentService response:', orderResult);
     
@@ -84,9 +88,33 @@ router.post('/place', authenticateToken, [
       return res.status(500).json({ error: orderResult.error || 'Failed to create payment order' });
     }
 
+    // Store the order details temporarily (you might want to use Redis or similar for production)
+    // For now, we'll store it in the order notes
+    const orderWithAuctionInfo = {
+      ...orderResult.razorpay_order,
+      auction_id: auction_id,
+      user_id: userId,
+      amount: amount,
+      location: location
+    };
+
     // Return order details to frontend - DO NOT create bid yet
     // Bid will be created only after payment success in /verify route
     console.log('✅ Razorpay order created, returning to frontend for payment');
+    console.log('📤 Response data:', {
+      success: true,
+      message: 'Razorpay order created successfully. Please complete payment.',
+      razorpay_order: {
+        id: orderResult.razorpay_order.id,
+        amount: orderResult.razorpay_order.amount,
+        currency: orderResult.razorpay_order.currency
+      },
+      auction_info: {
+        id: auction_id,
+        amount: amount,
+        location: location
+      }
+    });
     
     res.json({
       success: true,
@@ -95,6 +123,11 @@ router.post('/place', authenticateToken, [
         id: orderResult.razorpay_order.id,
         amount: orderResult.razorpay_order.amount,
         currency: orderResult.razorpay_order.currency
+      },
+      auction_info: {
+        id: auction_id,
+        amount: amount,
+        location: location
       }
     });
 
@@ -119,7 +152,10 @@ router.post('/place', authenticateToken, [
 router.post('/verify', authenticateToken, [
   body('payment_id').isString().withMessage('Payment ID is required'),
   body('order_id').isString().withMessage('Order ID is required'),
-  body('signature').isString().withMessage('Signature is required')
+  body('signature').isString().withMessage('Signature is required'),
+  body('auction_id').isString().withMessage('Auction ID is required'),
+  body('amount').isFloat({ min: 0.01 }).withMessage('Valid bid amount is required'),
+  body('location').optional().isString().withMessage('Location must be a string')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -127,10 +163,10 @@ router.post('/verify', authenticateToken, [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { payment_id, order_id, signature } = req.body;
+    const { payment_id, order_id, signature, auction_id, amount, location } = req.body;
     const userId = req.user.id;
 
-    console.log('🔍 Payment verification request:', { payment_id, order_id, signature, userId });
+    console.log('🔍 Payment verification request:', { payment_id, order_id, signature, auction_id, amount, userId });
 
     // Verify payment signature
     const verificationResult = await paymentService.verifyPaymentAuthorization(
@@ -144,24 +180,28 @@ router.post('/verify', authenticateToken, [
 
     console.log('✅ Payment signature verified, proceeding with bid creation');
 
-    // Find the auction and order details
-    const order = await paymentService.getPaymentDetails(payment_id);
-    if (!order.success) {
-      console.error('❌ Failed to get payment details');
-      return res.status(400).json({ error: 'Failed to get payment details' });
-    }
-
-    // Get auction details from the order
-    const auction = await Auction.findOne({ 
-      'highest_bidder': { $exists: true, $ne: null } 
-    }).sort({ highest_bid: -1 });
-
+    // Find the auction
+    const auction = await Auction.findById(auction_id);
     if (!auction) {
-      console.error('❌ No auction found for this payment');
+      console.error('❌ Auction not found:', auction_id);
       return res.status(404).json({ error: 'Auction not found' });
     }
 
-    const amount = order.payment.amount / 100; // Convert from paise to rupees
+    // Validate auction status
+    const now = new Date();
+    if (now < auction.start_time) {
+      return res.status(400).json({ error: 'Auction has not started yet' });
+    }
+    if (now > auction.end_time || auction.status === 'ended') {
+      return res.status(400).json({ error: 'Auction has ended' });
+    }
+
+    // Validate bid amount
+    if (amount <= auction.highest_bid) {
+      return res.status(400).json({ 
+        error: `Bid amount must be higher than current highest bid: ₹${auction.highest_bid}` 
+      });
+    }
 
     // Handle outbid refund if there's a current highest bidder
     if (auction.highest_bidder && auction.highest_bid > 0 && auction.highest_bidder.toString() !== userId) {
@@ -199,11 +239,11 @@ router.post('/verify', authenticateToken, [
       auction: auction._id,
       bidder: userId,
       amount: amount,
-      location: '',
+      location: location || '',
       razorpay_order_id: order_id,
       razorpay_payment_id: payment_id,
       authorized_amount: amount,
-      payment_status: 'captured',
+      payment_status: 'authorized', // Keep as authorized until auction ends
       status: 'active'
     });
 
@@ -228,13 +268,25 @@ router.post('/verify', authenticateToken, [
 
     console.log(`✅ New bid placed successfully: User ${userId} bid ₹${amount} on auction ${auction._id}`);
 
+    // Emit real-time update to all connected clients
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`auction_${auction._id}`).emit('newBid', {
+        auction_id: auction._id.toString(),
+        bidder_id: userId,
+        amount: amount,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     res.json({
       success: true,
       message: 'Payment verified and bid placed successfully',
       bid: {
         id: newBid._id,
-        amount: newBid.amount,
-        status: newBid.status
+        amount: amount,
+        auction_id: auction._id,
+        status: 'active'
       }
     });
 
