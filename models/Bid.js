@@ -16,6 +16,13 @@ const bidSchema = new mongoose.Schema({
   authorized_amount: { type: Number, required: true },
   // Bid status
   status: { type: String, enum: ['active', 'outbid', 'won', 'cancelled', 'success'], default: 'active' },
+  // Refund details for outbid bids
+  refund_details: {
+    refund_id: String,
+    refunded_amount: Number,
+    refund_reason: String,
+    refunded_at: Date
+  }
 }, {
   timestamps: { createdAt: 'created_at' }
 });

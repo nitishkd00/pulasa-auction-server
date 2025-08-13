@@ -32,12 +32,15 @@ router.get('/my-notifications', authenticateToken, async (req, res) => {
       if (bid.status === 'outbid') {
         notifications.push({
           type: 'outbid',
-          title: 'You\'ve been outbid!',
+          title: '🚨 You\'ve been outbid!',
           message: `Someone placed a higher bid on "${bid.auction.item_name}"`,
           auction: bid.auction,
           amount: bid.amount,
           timestamp: bid.updated_at,
-          read: false
+          read: false,
+          refund_details: bid.refund_details || null,
+          action_required: true,
+          priority: 'high'
         });
       } else if (bid.status === 'won') {
         notifications.push({
@@ -47,7 +50,9 @@ router.get('/my-notifications', authenticateToken, async (req, res) => {
           auction: bid.auction,
           amount: bid.amount,
           timestamp: bid.updated_at,
-          read: false
+          read: false,
+          action_required: false,
+          priority: 'high'
         });
       } else if (bid.status === 'active' && bid.payment_status === 'authorized') {
         notifications.push({
@@ -57,7 +62,9 @@ router.get('/my-notifications', authenticateToken, async (req, res) => {
           auction: bid.auction,
           amount: bid.amount,
           timestamp: bid.created_at,
-          read: false
+          read: false,
+          action_required: false,
+          priority: 'medium'
         });
       }
     });
@@ -72,7 +79,25 @@ router.get('/my-notifications', authenticateToken, async (req, res) => {
           auction: event.auction,
           amount: event.details.amount,
           timestamp: event.created_at,
-          read: false
+          read: false,
+          action_required: false,
+          priority: 'low'
+        });
+      } else if (event.event_type === 'bid_outbid') {
+        notifications.push({
+          type: 'outbid_detailed',
+          title: '💔 Outbid Alert - Take Action!',
+          message: `You were outbid on "${event.auction.item_name}". Your refund of ₹${event.details.refunded_amount} has been processed.`,
+          auction: event.auction,
+          amount: event.details.previous_amount,
+          new_amount: event.details.new_amount,
+          refund_id: event.details.refund_id,
+          refunded_amount: event.details.refunded_amount,
+          timestamp: event.created_at,
+          read: false,
+          action_required: true,
+          priority: 'high',
+          motivational_message: 'Don\'t give up! Place a higher bid and show them who\'s boss!'
         });
       }
     });

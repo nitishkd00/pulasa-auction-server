@@ -214,8 +214,10 @@ router.post('/verify', authenticateToken, [
         });
 
         if (currentHighestBid && currentHighestBid.razorpay_payment_id) {
+          console.log(`💰 Processing outbid refund for user ${currentHighestBid.bidder} on auction ${auction._id}`);
+          
           // Refund the previous highest bidder
-          await paymentService.refundPayment(
+          const refundResult = await paymentService.refundPayment(
             currentHighestBid.razorpay_payment_id,
             currentHighestBid.amount,
             'Outbid by another user'
@@ -224,12 +226,61 @@ router.post('/verify', authenticateToken, [
           // Update previous bid status
           currentHighestBid.status = 'outbid';
           currentHighestBid.payment_status = 'refunded';
+          currentHighestBid.refund_details = {
+            refund_id: refundResult.refund_id,
+            refunded_amount: refundResult.refunded_amount,
+            refund_reason: 'Outbid by another user',
+            refunded_at: new Date()
+          };
           await currentHighestBid.save();
 
+          // Create outbid event for notifications
+          await AuctionEvent.create({
+            auction: auction._id,
+            event_type: 'bid_outbid',
+            user: currentHighestBid.bidder,
+            details: {
+              previous_amount: currentHighestBid.amount,
+              new_amount: amount,
+              outbid_by: userId,
+              refund_id: refundResult.refund_id,
+              refunded_amount: refundResult.refunded_amount
+            }
+          });
+
           console.log(`✅ Refunded bid for user ${currentHighestBid.bidder} on auction ${auction._id}`);
+
+          // Emit outbid notification to the previous highest bidder
+          const io = req.app.get('io');
+          if (io) {
+            io.to(`user_${currentHighestBid.bidder}`).emit('outbid', {
+              type: 'outbid',
+              auction_id: auction._id.toString(),
+              auction_name: auction.item_name,
+              previous_amount: currentHighestBid.amount,
+              new_amount: amount,
+              refund_id: refundResult.refund_id,
+              refunded_amount: refundResult.refunded_amount,
+              message: `You've been outbid on "${auction.item_name}"! Your refund of ₹${refundResult.refunded_amount} has been processed.`,
+              timestamp: new Date().toISOString()
+            });
+          }
         }
       } catch (refundError) {
         console.error('❌ Failed to refund previous bid:', refundError);
+        
+        // Create refund failure event
+        await AuctionEvent.create({
+          auction: auction._id,
+          event_type: 'refund_failed',
+          user: auction.highest_bidder,
+          details: {
+            error: refundError.message,
+            bid_id: currentHighestBid?._id,
+            amount: currentHighestBid?.amount
+          }
+        });
+        
         // Continue with new bid even if refund fails
       }
     }
