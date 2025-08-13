@@ -21,6 +21,10 @@ router.post('/place', authenticateToken, [
   body('amount').isFloat({ min: 0.01 }).withMessage('Valid bid amount is required'),
   body('location').optional().isString().withMessage('Location must be a string')
 ], async (req, res) => {
+  console.log('🚨 DEBUG: /place route called!');
+  console.log('🚨 DEBUG: Request body:', req.body);
+  console.log('🚨 DEBUG: User:', req.user);
+  
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
