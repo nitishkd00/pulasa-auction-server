@@ -532,7 +532,10 @@ router.get('/auction/:auctionId', [
 
     const { auctionId } = req.params;
     
-    const bids = await Bid.find({ auction: auctionId })
+    const bids = await Bid.find({ 
+      auction: auctionId,
+      status: { $in: ['active', 'authorized'] } // Only count active/authorized bids
+    })
       .populate('bidder', 'username name email')
       .sort({ created_at: -1 });
     
@@ -579,7 +582,10 @@ router.get('/admin/auction/:auctionId', [
 
     const { auctionId } = req.params;
     
-    const bids = await Bid.find({ auction: auctionId })
+    const bids = await Bid.find({ 
+      auction: auctionId,
+      status: { $in: ['active', 'authorized'] } // Only count active/authorized bids
+    })
       .populate('bidder', 'username name email')
       .sort({ created_at: -1 });
     
