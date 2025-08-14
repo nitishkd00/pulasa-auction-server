@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://nitishkumardevoju:muwLYrPn5blRAGCd@pulasa.sjvscku.mongodb.net/test?retryWrites=true&w=majority&appName=pulasa';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/pulasa-auction';
 
 const connectDatabase = async () => {
   try {

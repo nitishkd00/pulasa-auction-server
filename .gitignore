@@ -11,6 +11,15 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# Debug scripts (NEVER commit these with real credentials!)
+debug-*.js
+test-*.js
+check-*.js
+explore-*.js
+find-*.js
+*-connection.js
+*-database*.js
+
 # Logs
 logs
 *.log
@@ -46,16 +55,17 @@ jspm_packages/
 # dotenv environment variables file
 .env
 
-# IDE
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# OS
+# OS generated files
 .DS_Store
-Thumbs.db
-
-# Uploads
-uploads/
-public/uploads/ 
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db 
