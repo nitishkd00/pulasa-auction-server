@@ -253,9 +253,18 @@ router.post('/verify', authenticateToken, [
             refunded_at: new Date()
           };
           
-          console.log(`💾 Updating bid status to outbid and refunded`);
-          await currentHighestBid.save();
-          console.log(`✅ Bid status updated successfully`);
+                     console.log(`💾 Updating bid status to outbid and refunded`);
+           await currentHighestBid.save();
+           console.log(`✅ Bid status updated successfully`);
+           
+           // Update auction total bids count after refund
+           const updatedTotalBidsCount = await Bid.countDocuments({ 
+             auction: auction._id,
+             status: { $in: ['active', 'authorized'] }
+           });
+           auction.total_bids = updatedTotalBidsCount;
+           await auction.save();
+           console.log(`🔢 Updated auction total bids count to: ${updatedTotalBidsCount}`);
 
           // Create outbid event for notifications
           await AuctionEvent.create({
@@ -335,10 +344,19 @@ router.post('/verify', authenticateToken, [
       existingUserBid.status = 'active';
       existingUserBid.updated_at = new Date();
       
-      console.log(`🔄 Updating existing bid instead of creating new one`);
-      await existingUserBid.save();
-      console.log(`✅ Existing bid updated successfully`);
-      finalBidId = existingUserBid._id;
+             console.log(`🔄 Updating existing bid instead of creating new one`);
+       await existingUserBid.save();
+       console.log(`✅ Existing bid updated successfully`);
+       finalBidId = existingUserBid._id;
+       
+       // Update auction total bids count after updating existing bid
+       const updatedTotalBidsCount = await Bid.countDocuments({ 
+         auction: auction._id,
+         status: { $in: ['active', 'authorized'] }
+       });
+       auction.total_bids = updatedTotalBidsCount;
+       await auction.save();
+       console.log(`🔢 Updated auction total bids count to: ${updatedTotalBidsCount}`);
     } else {
       // Create new bid record
       console.log(`🆕 Creating new bid record for user ${userId}`);
@@ -359,16 +377,26 @@ router.post('/verify', authenticateToken, [
       finalBidId = newBid._id;
     }
 
-    // Update auction with new highest bid
+    // Update auction with new highest bid and total bids count
     console.log(`📈 Updating auction highest bid from ₹${auction.highest_bid} to ₹${amount}`);
     console.log(`👤 Updating highest bidder from ${auction.highest_bidder} to ${userId}`);
     
+    // Count total bids for this auction
+    const totalBidsCount = await Bid.countDocuments({ 
+      auction: auction._id,
+      status: { $in: ['active', 'authorized'] } // Only count active/authorized bids
+    });
+    
+    console.log(`🔢 Total bids count for auction: ${totalBidsCount}`);
+    
     auction.highest_bid = amount;
     auction.highest_bidder = userId;
+    auction.total_bids = totalBidsCount;
     
     console.log(`💾 Saving auction with new data:`, {
       highest_bid: auction.highest_bid,
       highest_bidder: auction.highest_bidder,
+      total_bids: auction.total_bids,
       auction_id: auction._id
     });
     
