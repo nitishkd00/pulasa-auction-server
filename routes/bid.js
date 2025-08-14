@@ -21,6 +21,40 @@ const calculateTransactionFee = (amount) => {
   }
 };
 
+// Get user location from IP address automatically
+const getUserLocationFromIP = async (req) => {
+  try {
+    // Get IP address from request
+    const ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'] || req.headers['x-real-ip'];
+    
+    console.log('🌍 IP Address detected:', ip);
+    
+    // Skip local IPs (development/testing)
+    if (ip === '::1' || ip === '127.0.0.1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+      console.log('🏠 Local IP detected, using default location');
+      return 'Local Development';
+    }
+    
+    // Call free IP geolocation API
+    const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,city,regionName,country`);
+    const data = await response.json();
+    
+    console.log('🌍 IP Geolocation response:', data);
+    
+    if (data.status === 'success' && data.city && data.regionName) {
+      const location = `${data.city}, ${data.regionName}`;
+      console.log('📍 Location detected:', location);
+      return location;
+    } else {
+      console.log('❌ IP geolocation failed:', data.message || 'Unknown error');
+      return 'Unknown Location';
+    }
+  } catch (error) {
+    console.error('❌ Error detecting location from IP:', error);
+    return 'Unknown Location';
+  }
+};
+
 // Create bid order for authorization
 router.post('/place', authenticateToken, [
   body('auction_id').custom((value) => {
@@ -30,7 +64,7 @@ router.post('/place', authenticateToken, [
     return true;
   }).withMessage('Valid auction ID is required'),
   body('amount').isFloat({ min: 0.01 }).withMessage('Valid bid amount is required'),
-  body('location').optional().isString().withMessage('Location must be a string')
+
 ], async (req, res) => {
   console.log('🚨 DEBUG: /place route called!');
   console.log('🚨 DEBUG: Request body:', req.body);
@@ -45,8 +79,11 @@ router.post('/place', authenticateToken, [
       });
     }
 
-    const { auction_id, amount, location } = req.body;
+    const { auction_id, amount } = req.body;
     const userId = req.user.id;
+    
+    // Automatically detect user location from IP address
+    const location = await getUserLocationFromIP(req);
     
     console.log('🚀 Bid placement request:', { auction_id, amount, location, userId });
     
@@ -186,7 +223,7 @@ router.post('/verify', authenticateToken, [
   body('signature').isString().withMessage('Signature is required'),
   body('auction_id').isString().withMessage('Auction ID is required'),
   body('amount').isFloat({ min: 0.01 }).withMessage('Valid bid amount is required'),
-  body('location').optional().isString().withMessage('Location must be a string'),
+
   body('transaction_fee').isFloat({ min: 0 }).withMessage('Valid transaction fee is required'),
   body('total_amount').isFloat({ min: 0.01 }).withMessage('Valid total amount is required')
 ], async (req, res) => {
@@ -196,10 +233,13 @@ router.post('/verify', authenticateToken, [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { payment_id, order_id, signature, auction_id, amount, location, transaction_fee, total_amount } = req.body;
+    const { payment_id, order_id, signature, auction_id, amount, transaction_fee, total_amount } = req.body;
     const userId = req.user.id;
+    
+    // Automatically detect user location from IP address
+    const location = await getUserLocationFromIP(req);
 
-    console.log('🔍 Payment verification request:', { payment_id, order_id, signature, auction_id, amount, userId });
+    console.log('🔍 Payment validation request:', { payment_id, order_id, signature, auction_id, amount, location, userId });
 
     // Verify payment signature
     const verificationResult = await paymentService.verifyPaymentAuthorization(
