@@ -173,9 +173,14 @@ router.post('/verify', authenticateToken, [
       payment_id, order_id, signature
     );
 
-    if (!verificationResult.verified) {
-      console.error('❌ Payment signature verification failed');
-      return res.status(400).json({ error: 'Payment verification failed' });
+    console.log('🔍 Payment verification result:', verificationResult);
+
+    if (!verificationResult.success || !verificationResult.verified) {
+      console.error('❌ Payment signature verification failed:', verificationResult.error || 'Unknown error');
+      return res.status(400).json({ 
+        error: 'Payment verification failed',
+        details: verificationResult.error || 'Signature verification failed'
+      });
     }
 
     console.log('✅ Payment signature verified, proceeding with bid creation');
@@ -205,6 +210,8 @@ router.post('/verify', authenticateToken, [
 
     // Handle outbid refund if there's a current highest bidder
     if (auction.highest_bidder && auction.highest_bid > 0 && auction.highest_bidder.toString() !== userId) {
+      console.log(`🔄 Outbid detected: Current highest bid ₹${auction.highest_bid} by user ${auction.highest_bidder}, new bid ₹${amount} by user ${userId}`);
+      
       try {
         const currentHighestBid = await Bid.findOne({
           auction: auction._id,
@@ -213,15 +220,28 @@ router.post('/verify', authenticateToken, [
           payment_status: 'authorized'
         });
 
+        console.log(`🔍 Found current highest bid:`, {
+          bidId: currentHighestBid?._id,
+          bidder: currentHighestBid?.bidder,
+          amount: currentHighestBid?.amount,
+          paymentId: currentHighestBid?.razorpay_payment_id,
+          status: currentHighestBid?.status,
+          paymentStatus: currentHighestBid?.payment_status
+        });
+
         if (currentHighestBid && currentHighestBid.razorpay_payment_id) {
           console.log(`💰 Processing outbid refund for user ${currentHighestBid.bidder} on auction ${auction._id}`);
           
           // Refund the previous highest bidder
+          console.log(`💳 Attempting refund for payment ID: ${currentHighestBid.razorpay_payment_id}, amount: ₹${currentHighestBid.amount}`);
+          
           const refundResult = await paymentService.refundPayment(
             currentHighestBid.razorpay_payment_id,
             currentHighestBid.amount,
             'Outbid by another user'
           );
+
+          console.log(`💰 Refund result:`, refundResult);
 
           // Update previous bid status
           currentHighestBid.status = 'outbid';
@@ -232,7 +252,10 @@ router.post('/verify', authenticateToken, [
             refund_reason: 'Outbid by another user',
             refunded_at: new Date()
           };
+          
+          console.log(`💾 Updating bid status to outbid and refunded`);
           await currentHighestBid.save();
+          console.log(`✅ Bid status updated successfully`);
 
           // Create outbid event for notifications
           await AuctionEvent.create({
@@ -285,25 +308,72 @@ router.post('/verify', authenticateToken, [
       }
     }
 
-    // Create new bid record
-    const newBid = new Bid({
+    // Check if user already has a bid on this auction
+    const existingUserBid = await Bid.findOne({
       auction: auction._id,
       bidder: userId,
-      amount: amount,
-      location: location || '',
-      razorpay_order_id: order_id,
-      razorpay_payment_id: payment_id,
-      authorized_amount: amount,
-      payment_status: 'authorized', // Keep as authorized until auction ends
-      status: 'active'
+      status: { $in: ['active', 'authorized'] }
     });
 
-    await newBid.save();
+    let finalBidId;
+
+    if (existingUserBid) {
+      console.log(`⚠️ User ${userId} already has an existing bid on auction ${auction._id}:`, {
+        bidId: existingUserBid._id,
+        amount: existingUserBid.amount,
+        status: existingUserBid.status,
+        paymentStatus: existingUserBid.payment_status
+      });
+      
+      // Update existing bid instead of creating new one
+      existingUserBid.amount = amount;
+      existingUserBid.location = location || '';
+      existingUserBid.razorpay_order_id = order_id;
+      existingUserBid.razorpay_payment_id = payment_id;
+      existingUserBid.authorized_amount = amount;
+      existingUserBid.payment_status = 'authorized';
+      existingUserBid.status = 'active';
+      existingUserBid.updated_at = new Date();
+      
+      console.log(`🔄 Updating existing bid instead of creating new one`);
+      await existingUserBid.save();
+      console.log(`✅ Existing bid updated successfully`);
+      finalBidId = existingUserBid._id;
+    } else {
+      // Create new bid record
+      console.log(`🆕 Creating new bid record for user ${userId}`);
+      const newBid = new Bid({
+        auction: auction._id,
+        bidder: userId,
+        amount: amount,
+        location: location || '',
+        razorpay_order_id: order_id,
+        razorpay_payment_id: payment_id,
+        authorized_amount: amount,
+        payment_status: 'authorized', // Keep as authorized until auction ends
+        status: 'active'
+      });
+
+      await newBid.save();
+      console.log(`✅ New bid created successfully: ${newBid._id}`);
+      finalBidId = newBid._id;
+    }
 
     // Update auction with new highest bid
+    console.log(`📈 Updating auction highest bid from ₹${auction.highest_bid} to ₹${amount}`);
+    console.log(`👤 Updating highest bidder from ${auction.highest_bidder} to ${userId}`);
+    
     auction.highest_bid = amount;
     auction.highest_bidder = userId;
+    
+    console.log(`💾 Saving auction with new data:`, {
+      highest_bid: auction.highest_bid,
+      highest_bidder: auction.highest_bidder,
+      auction_id: auction._id
+    });
+    
     await auction.save();
+    console.log(`✅ Auction updated successfully`);
 
     // Create auction event
     await AuctionEvent.create({
@@ -330,16 +400,19 @@ router.post('/verify', authenticateToken, [
       });
     }
 
-    res.json({
+    const responseData = {
       success: true,
       message: 'Payment verified and bid placed successfully',
       bid: {
-        id: newBid._id,
+        id: finalBidId,
         amount: amount,
         auction_id: auction._id,
         status: 'active'
       }
-    });
+    };
+
+    console.log(`🎉 Final response data:`, responseData);
+    res.json(responseData);
 
   } catch (error) {
     console.error('❌ Payment verification error:', error);
