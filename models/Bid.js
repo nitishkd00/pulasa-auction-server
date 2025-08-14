@@ -14,6 +14,9 @@ const bidSchema = new mongoose.Schema({
     default: 'authorized' 
   },
   authorized_amount: { type: Number, required: true },
+  // Transaction fee fields
+  transaction_fee: { type: Number, required: true },
+  total_amount: { type: Number, required: true },
   // Bid status
   status: { type: String, enum: ['active', 'outbid', 'won', 'cancelled', 'success'], default: 'active' },
   // Refund details for outbid bids

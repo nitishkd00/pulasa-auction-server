@@ -162,7 +162,7 @@ router.get('/bidding-analytics', async (req, res) => {
       { $sort: { bidCount: -1 } },
       { $limit: 50 }
     ]);
-
+    
     res.json({
       success: true,
       biddingAnalytics: {
@@ -222,7 +222,7 @@ router.get('/refunds', async (req, res) => {
       .populate('bidder', 'username email')
       .populate('auction', 'item_name')
       .sort({ created_at: -1 });
-
+    
     // Transform to refund format
     const refundDetails = refunds.map(bid => ({
       _id: bid._id,
@@ -315,7 +315,7 @@ router.get('/user/:userId/analytics', async (req, res) => {
     analytics.favoriteAuctions = Object.values(analytics.favoriteAuctions)
       .sort((a, b) => b.bidCount - a.bidCount)
       .slice(0, 5);
-
+    
     res.json({
       success: true,
       analytics
@@ -398,7 +398,7 @@ router.get('/auction/:auctionId/analytics', async (req, res) => {
     analytics.topBidders = Object.values(analytics.topBidders)
       .sort((a, b) => b.totalAmount - a.totalAmount)
       .slice(0, 10);
-
+    
     res.json({
       success: true,
       analytics

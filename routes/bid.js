@@ -10,6 +10,17 @@ const mongoose = require('mongoose');
 
 const router = express.Router();
 
+// Calculate transaction fee based on bid amount
+const calculateTransactionFee = (amount) => {
+  if (amount <= 1000) {
+    return 7.99;
+  } else if (amount <= 25000) {
+    return 11.99;
+  } else {
+    return 14.99;
+  }
+};
+
 // Create bid order for authorization
 router.post('/place', authenticateToken, [
   body('auction_id').custom((value) => {
@@ -74,13 +85,23 @@ router.post('/place', authenticateToken, [
       });
     }
 
-    // Create Razorpay order for authorization
-    console.log('🔑 Creating Razorpay order for amount:', amount);
+    // Calculate transaction fee and total amount
+    const transactionFee = calculateTransactionFee(amount);
+    const totalAmount = amount + transactionFee;
+    
+    console.log('💰 Fee calculation:', {
+      bidAmount: amount,
+      transactionFee: transactionFee,
+      totalAmount: totalAmount
+    });
+    
+    // Create Razorpay order for authorization (total amount including fee)
+    console.log('🔑 Creating Razorpay order for total amount:', totalAmount);
     console.log('🔑 User ID:', userId);
     console.log('🔑 Auction ID:', auction_id);
     console.log('🔑 Location:', location);
     
-    const orderResult = await paymentService.createBidOrder(amount);
+    const orderResult = await paymentService.createBidOrder(totalAmount);
     console.log('🔑 PaymentService response:', orderResult);
     
     if (!orderResult.success) {
@@ -113,6 +134,11 @@ router.post('/place', authenticateToken, [
         id: auction_id,
         amount: amount,
         location: location
+      },
+      fee_info: {
+        bid_amount: amount,
+        transaction_fee: transactionFee,
+        total_amount: totalAmount
       }
     });
     
@@ -128,6 +154,11 @@ router.post('/place', authenticateToken, [
         id: auction_id,
         amount: amount,
         location: location
+      },
+      fee_info: {
+        bid_amount: amount,
+        transaction_fee: transactionFee,
+        total_amount: totalAmount
       }
     });
 
@@ -155,7 +186,9 @@ router.post('/verify', authenticateToken, [
   body('signature').isString().withMessage('Signature is required'),
   body('auction_id').isString().withMessage('Auction ID is required'),
   body('amount').isFloat({ min: 0.01 }).withMessage('Valid bid amount is required'),
-  body('location').optional().isString().withMessage('Location must be a string')
+  body('location').optional().isString().withMessage('Location must be a string'),
+  body('transaction_fee').isFloat({ min: 0 }).withMessage('Valid transaction fee is required'),
+  body('total_amount').isFloat({ min: 0.01 }).withMessage('Valid total amount is required')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -163,7 +196,7 @@ router.post('/verify', authenticateToken, [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { payment_id, order_id, signature, auction_id, amount, location } = req.body;
+    const { payment_id, order_id, signature, auction_id, amount, location, transaction_fee, total_amount } = req.body;
     const userId = req.user.id;
 
     console.log('🔍 Payment verification request:', { payment_id, order_id, signature, auction_id, amount, userId });
@@ -340,6 +373,8 @@ router.post('/verify', authenticateToken, [
       existingUserBid.razorpay_order_id = order_id;
       existingUserBid.razorpay_payment_id = payment_id;
       existingUserBid.authorized_amount = amount;
+      existingUserBid.transaction_fee = transaction_fee;
+      existingUserBid.total_amount = total_amount;
       existingUserBid.payment_status = 'authorized';
       existingUserBid.status = 'active';
       existingUserBid.updated_at = new Date();
@@ -368,6 +403,8 @@ router.post('/verify', authenticateToken, [
         razorpay_order_id: order_id,
         razorpay_payment_id: payment_id,
         authorized_amount: amount,
+        transaction_fee: transaction_fee,
+        total_amount: total_amount,
         payment_status: 'authorized', // Keep as authorized until auction ends
         status: 'active'
       });
