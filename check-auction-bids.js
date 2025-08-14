@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://your-username:your-password@your-cluster.mongodb.net/pulasa-auction?retryWrites=true&w=majority', {
+mongoose.connect('mongodb+srv://nitishkumardevoju:muwLYrPn5blRAGCd@pulasa.sjvscku.mongodb.net/pulasa-auction?retryWrites=true&w=majority&appName=pulasa', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 });
