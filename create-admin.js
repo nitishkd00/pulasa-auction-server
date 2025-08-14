@@ -6,7 +6,7 @@ require('dotenv').config();
 async function createAdminUser() {
   try {
     // Connect to MongoDB
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/pulasa_auction');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/pulasa-auction');
     console.log('✅ Connected to MongoDB');
 
     // Check if admin already exists
@@ -15,6 +15,7 @@ async function createAdminUser() {
       console.log('⚠️  Admin user already exists');
       console.log('Email: admin@auction.com');
       console.log('Password: admin123');
+      console.log('Username: auction_admin');
       console.log('Name: Auction Admin');
       console.log('Is Admin: true');
       return;
@@ -27,6 +28,7 @@ async function createAdminUser() {
     const adminUser = new User({
       email: 'admin@auction.com',
       password_hash: hashedPassword,
+      username: 'auction_admin',
       name: 'Auction Admin',
       phone: '9999999999',
       address: 'Admin Address',
@@ -38,6 +40,7 @@ async function createAdminUser() {
     console.log('✅ Admin user created successfully!');
     console.log('📧 Email: admin@auction.com');
     console.log('🔑 Password: admin123');
+    console.log('👤 Username: auction_admin');
     console.log('👤 Name: Auction Admin');
     console.log('👑 Is Admin: true');
 

@@ -36,18 +36,35 @@ router.post('/create', authenticateToken, requireAdmin, [
   body('item_image').isURL().withMessage('Valid image URL is required'),
   body('base_price').isFloat({ min: 0.01 }).withMessage('Base price must be greater than 0'),
   body('start_time').isISO8601().withMessage('Valid start time is required'),
-  body('end_time').isISO8601().withMessage('Valid end time is required')
+  body('end_time').isISO8601().withMessage('Valid end time is required'),
+  body('description').notEmpty().withMessage('Description is required')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      console.log('Validation errors:', errors.array());
+      return res.status(400).json({ 
+        error: 'Validation failed',
+        details: errors.array().map(err => `${err.path}: ${err.msg}`).join(', ')
+      });
     }
 
     const { item_name, item_image, base_price, start_time, end_time, description } = req.body;
 
-    console.log('Received start_time:', start_time);
-    console.log('Received end_time:', end_time);
+    console.log('Received auction data:', {
+      item_name,
+      item_image,
+      base_price,
+      start_time,
+      end_time,
+      description: description ? `${description.substring(0, 50)}...` : 'MISSING'
+    });
+    
+    console.log('User info:', {
+      userId: req.user._id,
+      email: req.user.email,
+      isAdmin: req.user.is_admin
+    });
 
     // Fix timezone issues
     const startDateTime = fixTimezone(start_time);
@@ -80,14 +97,14 @@ router.post('/create', authenticateToken, requireAdmin, [
       description,
       start_time: startDateTime,
       end_time: endDateTime,
-      created_by: req.user.userId
+      created_by: req.user._id
     });
 
     // Log auction creation event
     await AuctionEvent.create({
       auction: auction._id,
       event_type: 'created',
-      user: req.user.userId,
+      user: req.user._id,
       description: `Auction created for ${item_name}`
     });
 

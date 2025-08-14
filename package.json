@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "jest"
+    "test": "jest",
+    "test-refund": "node test-refund-flow.js",
+    "cleanup-auctions": "node cleanup-ended-auctions.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
