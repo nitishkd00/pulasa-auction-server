@@ -374,6 +374,41 @@ router.get('/my-bids', authenticateToken, async (req, res) => {
   }
 });
 
+// Get all bids for an auction (public endpoint)
+router.get('/auction/:auctionId', [
+  param('auctionId').custom((value) => {
+    if (!mongoose.Types.ObjectId.isValid(value)) {
+      throw new Error('Invalid auction ID format');
+    }
+    return true;
+  })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        error: 'Invalid auction ID format',
+        details: errors.array()
+      });
+    }
+
+    const { auctionId } = req.params;
+    
+    const bids = await Bid.find({ auction: auctionId })
+      .populate('bidder', 'username name email')
+      .sort({ created_at: -1 });
+
+    res.json({
+      success: true,
+      bids: bids
+    });
+
+  } catch (error) {
+    console.error('❌ Fetch auction bids error:', error);
+    res.status(500).json({ error: 'Failed to fetch auction bids' });
+  }
+});
+
 // Admin: Get all bids for an auction
 router.get('/admin/auction/:auctionId', [
   param('auctionId').custom((value) => {
