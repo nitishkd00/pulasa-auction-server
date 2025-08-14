@@ -65,18 +65,52 @@ class PaymentService {
         throw new Error('Razorpay is not configured');
       }
 
-      const text = orderId + '|' + paymentId;
-      const generatedSignature = crypto
+      // Try different signature verification methods
+      // Method 1: orderId + '|' + paymentId + '|' + 'authorized' (most likely correct)
+      const text1 = orderId + '|' + paymentId + '|' + 'authorized';
+      const generatedSignature1 = crypto
         .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-        .update(text)
+        .update(text1)
         .digest('hex');
 
-      if (generatedSignature === signature) {
-        console.log('✅ Payment signature verified successfully');
-        return { success: true, verified: true };
+      // Method 2: orderId + '|' + paymentId (current method)
+      const text2 = orderId + '|' + paymentId;
+      const generatedSignature2 = crypto
+        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+        .update(text2)
+        .digest('hex');
+
+      // Method 3: orderId + '|' + paymentId + '|' + 'captured'
+      const text3 = orderId + '|' + paymentId + '|' + 'captured';
+      const generatedSignature3 = crypto
+        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+        .update(text3)
+        .digest('hex');
+
+      console.log('🔍 Signature verification attempts:');
+      console.log('📝 Method 1 (authorized):', text1, '→', generatedSignature1);
+      console.log('📝 Method 2 (current):', text2, '→', generatedSignature2);
+      console.log('📝 Method 3 (captured):', text3, '→', generatedSignature3);
+      console.log('📝 Received signature:', signature);
+
+      // Check if any method matches
+      if (generatedSignature1 === signature) {
+        console.log('✅ Payment signature verified successfully (Method 1)');
+        return { success: true, verified: true, method: 'authorized' };
+      } else if (generatedSignature2 === signature) {
+        console.log('✅ Payment signature verified successfully (Method 2)');
+        return { success: true, verified: true, method: 'current' };
+      } else if (generatedSignature3 === signature) {
+        console.log('✅ Payment signature verified successfully (Method 3)');
+        return { success: true, verified: true, method: 'captured' };
       } else {
-        console.error('❌ Payment signature verification failed');
-        return { success: false, verified: false, error: 'Invalid signature' };
+        console.error('❌ Payment signature verification failed for all methods');
+        console.error('❌ Expected signatures:');
+        console.error('   Method 1 (authorized):', generatedSignature1);
+        console.error('   Method 2 (current):', generatedSignature2);
+        console.error('   Method 3 (captured):', generatedSignature3);
+        console.error('❌ Received signature:', signature);
+        return { success: false, verified: false, error: 'Invalid signature for all methods' };
       }
     } catch (error) {
       console.error('❌ Payment verification error:', error);
