@@ -498,10 +498,22 @@ router.get('/auction/:auctionId', [
     const bids = await Bid.find({ auction: auctionId })
       .populate('bidder', 'username name email')
       .sort({ created_at: -1 });
+    
+    // Process bids to handle missing username field
+    const processedBids = bids.map(bid => {
+      const bidder = bid.bidder;
+      if (bidder) {
+        // Ensure bidder has all required fields with fallbacks
+        bidder.username = bidder.username || bidder.name || 'Unknown User';
+        bidder.name = bidder.name || bidder.username || 'Unknown User';
+        bidder.email = bidder.email || 'No Email';
+      }
+      return bid;
+    });
 
     res.json({
       success: true,
-      bids: bids
+      bids: processedBids
     });
 
   } catch (error) {
@@ -533,10 +545,22 @@ router.get('/admin/auction/:auctionId', [
     const bids = await Bid.find({ auction: auctionId })
       .populate('bidder', 'username name email')
       .sort({ created_at: -1 });
+    
+    // Process bids to handle missing username field
+    const processedBids = bids.map(bid => {
+      const bidder = bid.bidder;
+      if (bidder) {
+        // Ensure bidder has all required fields with fallbacks
+        bidder.username = bidder.username || bidder.name || 'Unknown User';
+        bidder.name = bidder.name || bidder.username || 'Unknown User';
+        bidder.email = bidder.email || 'No Email';
+      }
+      return bid;
+    });
 
     res.json({
       success: true,
-      bids: bids
+      bids: processedBids
     });
 
   } catch (error) {
