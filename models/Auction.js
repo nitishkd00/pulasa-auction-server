@@ -9,6 +9,7 @@ const auctionSchema = new mongoose.Schema({
   end_time: { type: Date, required: true },
   highest_bid: { type: Number, default: 0 },
   highest_bidder: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  total_bids: { type: Number, default: 0 }, // Add missing field for bid count
   status: { type: String, enum: ['pending', 'active', 'ended', 'cancelled'], default: 'pending' },
   winner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   winning_amount: { type: Number },

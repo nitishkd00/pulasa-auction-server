@@ -13,6 +13,7 @@ const Auction = require('./models/Auction');
 const Bid = require('./models/Bid');
 const AuctionEvent = require('./models/AuctionEvent');
 const auctionEndService = require('./services/auctionEndService');
+const auctionStartService = require('./services/auctionStartService');
 
 const app = express();
 app.set('trust proxy', 1); // Trust the first proxy (React dev server)
@@ -183,10 +184,9 @@ async function startServer() {
     app.use('/api/notifications', notificationRoutes);
     app.use('/api/webhooks', webhookRoutes);
 
-    // Health check endpoint
+    // Health check endpoint for Render
     app.get('/api/health', (req, res) => {
-      res.json({
-        success: true,
+      res.status(200).json({ 
         status: 'OK',
         service: 'auction-server',
         message: 'Pulasa Auction Server is running',
@@ -196,6 +196,34 @@ async function startServer() {
         uptime: process.uptime(),
         features: ['auctions', 'real-time-bidding']
       });
+    });
+
+    // Manual auction status fix endpoint (for immediate testing)
+    app.post('/api/admin/fix-auction-status', async (req, res) => {
+      try {
+        const { auctionId } = req.body;
+        
+        if (!auctionId) {
+          return res.status(400).json({ error: 'Auction ID is required' });
+        }
+
+        console.log(`🔧 Manual auction status fix requested for: ${auctionId}`);
+        
+        const result = await auctionStartService.startSpecificAuction(auctionId);
+        
+        res.json({
+          success: true,
+          message: 'Auction status fixed successfully',
+          result
+        });
+        
+      } catch (error) {
+        console.error('❌ Manual auction status fix failed:', error);
+        res.status(500).json({
+          success: false,
+          error: error.message
+        });
+      }
     });
 
     // Socket.IO connection handling
@@ -210,8 +238,26 @@ async function startServer() {
 
       // Join auction room
       socket.on('joinAuction', (auctionId) => {
-        socket.join(`auction_${auctionId}`);
-        console.log(`User ${socket.id} joined auction ${auctionId}`);
+        const roomName = `auction_${auctionId}`;
+        console.log(`🔌 Socket ${socket.id} joining auction room: ${roomName} for auction: ${auctionId}`);
+        
+        socket.join(roomName);
+        console.log(`✅ Socket ${socket.id} successfully joined room: ${roomName}`);
+        
+        // Log all rooms this socket is in for debugging
+        console.log(`🔍 Socket ${socket.id} rooms after joining:`);
+        socket.rooms.forEach(room => {
+          if (room.startsWith('auction_')) {
+            console.log(`   📍 Auction room: ${room}`);
+          }
+        });
+        
+        // Verify room membership
+        if (socket.rooms.has(roomName)) {
+          console.log(`✅ Verification: Socket ${socket.id} is confirmed in room ${roomName}`);
+        } else {
+          console.log(`❌ ERROR: Socket ${socket.id} failed to join room ${roomName}`);
+        }
       });
 
       // Leave auction room
@@ -270,6 +316,8 @@ async function startServer() {
     const PORT = process.env.PORT || 5001;
 
     server.listen(PORT, () => {
+      // Start auction start processing cron job
+      auctionStartService.startCronJob();
       // Start auction end processing cron job
       auctionEndService.startCronJob();
       console.log(`🚀 Pulasa Auction Server running on port ${PORT}`);

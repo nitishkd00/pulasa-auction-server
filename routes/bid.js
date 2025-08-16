@@ -94,14 +94,24 @@ router.post('/place', authenticateToken, [
     }
 
     const now = new Date();
+    
+    // Check auction status first
+    if (auction.status === 'pending') {
+      return res.status(400).json({ error: 'Auction has not started yet' });
+    }
+    if (auction.status === 'ended') {
+      return res.status(400).json({ error: 'Auction has ended' });
+    }
+    
+    // Check time-based validation
     if (now < auction.start_time) {
       return res.status(400).json({ error: 'Auction has not started yet' });
     }
-    if (now > auction.end_time || auction.status === 'ended') {
+    if (now > auction.end_time) {
       return res.status(400).json({ error: 'Auction has ended' });
     }
 
-    // Validate bid amount
+    // Validate bid amount only after confirming auction is active
     if (amount <= auction.highest_bid) {
       return res.status(400).json({ 
         error: `Bid amount must be higher than current highest bid: ₹${auction.highest_bid}` 
@@ -267,14 +277,24 @@ router.post('/verify', authenticateToken, [
 
     // Validate auction status
     const now = new Date();
+    
+    // Check auction status first
+    if (auction.status === 'pending') {
+      return res.status(400).json({ error: 'Auction has not started yet' });
+    }
+    if (auction.status === 'ended') {
+      return res.status(400).json({ error: 'Auction has ended' });
+    }
+    
+    // Check time-based validation
     if (now < auction.start_time) {
       return res.status(400).json({ error: 'Auction has not started yet' });
     }
-    if (now > auction.end_time || auction.status === 'ended') {
+    if (now > auction.end_time) {
       return res.status(400).json({ error: 'Auction has ended' });
     }
 
-    // Validate bid amount
+    // Validate bid amount only after confirming auction is active
     if (amount <= auction.highest_bid) {
       return res.status(400).json({ 
         error: `Bid amount must be higher than current highest bid: ₹${auction.highest_bid}` 
@@ -497,12 +517,19 @@ router.post('/verify', authenticateToken, [
     // Emit real-time update to all connected clients
     const io = req.app.get('io');
     if (io) {
-      io.to(`auction_${auction._id}`).emit('newBid', {
-        auction_id: auction._id.toString(),
+      // Use auction._id for room name to ensure consistency
+      const roomName = `auction_${auction._id}`;
+      console.log(`📡 Emitting newBid event to room: ${roomName}`);
+      
+      io.to(roomName).emit('newBid', {
+        auction_id: auction._id.toString(), // Use the actual auction ID from database
         bidder_id: userId,
         amount: amount,
         timestamp: new Date().toISOString()
       });
+      console.log(`✅ newBid event emitted successfully to room: ${roomName}`);
+    } else {
+      console.log(`⚠️ Socket.IO not available for real-time updates`);
     }
 
     const responseData = {
